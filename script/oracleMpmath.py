@@ -8,6 +8,10 @@ import math
 def f0(x):
     # airy_Ai
     return mpmath.airyai(x)
+
+# def f0(x):
+#     return mpmath.cos(x) - 0.2 + 10.0
+
 def f1(x):
     # airy_Bi
     return mpmath.airybi(x)
@@ -174,7 +178,10 @@ def f48(x):
     return 1-mpmath.ncdf(x)
 def f49(x):
     # hazard
-    return mpmath.npdf(x) / (1-mpmath.ncdf(x))
+    try:
+        return mpmath.npdf(x) / (1-mpmath.ncdf(x))
+    except:
+        return 0
 def f50(x):
     # exp
     return mpmath.exp(x)
@@ -490,9 +497,13 @@ class GetOracle:
             return float("inf")
 
 class OutputParser:
-    def __init__(self):
-        self.outputFile="tempOutput.out"
-        self.writeToFile="Output.out"
+    def __init__(self, num=None):
+        # self.outputFile=f"tempOutput_e{num}.out"
+        # import os 
+        # os.makedirs("/atom/data/out", exist_ok=True)
+        # self.writeToFile=f"/atom/data/out/Output_e{num}.json"
+        self.outputFile=f"tempOutput.out"
+        self.writeToFile=f"Output.json"
         with io.open(self.outputFile) as f:
             self.rawData = f.readlines()
         self.data = {}
@@ -590,6 +601,10 @@ class OutputParser:
             f.write(json.dumps(tempData, sort_keys=True, indent=2))
 
 def main():
+    # for i in range(1, 11):
+    #     op = OutputParser(i)
+    #     op.readAndCalculate()
+    #     op.writeToJson()
     op = OutputParser()
     op.readAndCalculate()
     op.writeToJson()

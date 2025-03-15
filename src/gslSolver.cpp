@@ -20,6 +20,8 @@
 #include "fpUtil.h"
 #include "fpInterface.h"
 
+#include "json.hh"
+
 class InputFitnessPair {
 public:
     double input;
@@ -157,7 +159,11 @@ public:
 };
 
 class EvoSolver {
-private:
+public:
+    using Interval = std::pair<double, double>;
+    using IntervalVec = std::vector<Interval>;
+
+public:
     std::unique_ptr<FloatingPointFunction> funcUnderTest;
     std::map<uint64_t, InstructionInfo> instMap;
     uint32_t unstableInstCount = 0;
@@ -184,6 +190,16 @@ private:
 
     std::string outPath = "tempOutput.out";
 
+    // =====================================================================
+    
+    IntervalVec intervals;
+
+    double totalLength = 0;
+    std::vector<double> intervalLengths;
+    
+    std::uniform_real_distribution<double> uniTotalLength;
+    // =====================================================================
+
 public:
     EvoSolver() :
         mtGenerator(0xdeadbeef),
@@ -195,9 +211,13 @@ public:
         myfile.close();
     }
 
-    void run(std::unique_ptr<FloatingPointFunction> & funcPtr, int index) {
+    // !============================================================
+    void run(std::unique_ptr<FloatingPointFunction> & funcPtr, int index, IntervalVec& intervals) {
         startTime = std::chrono::high_resolution_clock::now();
+        this->intervals = intervals;
+
         _init(funcPtr, index);
+
         _1RandomSearch();
         _2EvolutionSearch();
         _3Prioritize();
@@ -216,6 +236,18 @@ private:
         GSLFuncIndex = index;
         funcUnderTest = std::move(funcPtr);
 
+        // !=======================================================
+        totalLength = 0; // ! Reset
+        intervalLengths.clear(); // ! Reset
+        intervalLengths.push_back(0);
+        for (const auto& interval : intervals) {
+            totalLength += interval.second - interval.first;
+            intervalLengths.push_back(totalLength);
+        }
+
+        this->uniTotalLength = std::uniform_real_distribution<double>(0, totalLength);
+        // !=======================================================
+
         // Clear member values
         unstableInstCount = 0;
         // Fast clear instMap.
@@ -224,7 +256,8 @@ private:
         std::cout << "Current Analyzing Function Index: " << index << std::endl;
     }
 
-    double _initDist() {
+    // Origin
+    double _initDistOrigin() {
         double x = fpUtil::randDouble();
         double p01 = uni01(mtGenerator);
         if (p01 < initCenterRate) {
@@ -237,12 +270,31 @@ private:
         return x;
     }
 
+    // ! New
+    double _initDist() {
+        double randPosition = uniTotalLength(mtGenerator);
+
+        auto it = std::lower_bound(intervalLengths.begin(), intervalLengths.end(), randPosition);
+        --it;
+        
+        auto index = std::distance(intervalLengths.begin(), it);
+        double relativePosition = randPosition - *it;
+        double value = intervals[index].first + relativePosition;
+
+        // if (value >= -5 && value <= -3) {
+        //     std::cout << value << std::endl;
+        // }
+
+        return value;
+    }
+
     // The results stored in instMap.
     void _1RandomSearch() {
         double x, y;
 
         for (int i = 1; i <= randomIteration; i++) {
             x = _initDist();
+
             funcUnderTest->call(x);
 
             // print the progress.
@@ -263,10 +315,20 @@ private:
                 double fit = fpUtil::revisedCondition(info.opcode, info.op1, info.op2);
 
                 InstructionInfo &curInst = instMap[info.instID];
+
                 curInst.pushInputFitness(x, fit);
             }
         }
         std::cout << "\n1. Random Search Done.\n";
+    }
+
+    bool isInIntervals(double x) {
+        for (const auto& interval : intervals) {
+            if (x >= interval.first && x <= interval.second) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // The results stored in instMap.
@@ -311,6 +373,16 @@ private:
                     // 2.2 mutation.
                     double mutation = evoNormalFactor * fabs(curInput) * normalDist(mtGenerator);
                     double newInput = curInput + mutation;
+
+                    // !===========================================================
+                    
+                    if (!isInIntervals(newInput)) {
+                        // std::cout << newInput << " = " << curInput << " + " << mutation << std::endl;
+                        j = j - 1;
+                        continue;
+                    }
+                    // !===========================================================
+
                     if (!std::isfinite(newInput))
                         continue;
 
@@ -458,6 +530,8 @@ private:
     }
 };
 
+
+
 int main(int argc, char *argv[]) {
     // // Init communicator.
     // Communicator &comm = Communicator::getInstance();
@@ -465,37 +539,75 @@ int main(int argc, char *argv[]) {
     EvoSolver es;
     std::unique_ptr<FloatingPointFunction> funcPtr;
 
+
     if (argc == 1 || (argc > 1 && strcmp(argv[1], "example") == 0)) {
-        int index = 0;
-	if (argc > 2)
-	    index = atoi(argv[2]);
-	if (index >= simpleFuncList.size()) {
-	    std::cout << "Invalid index in simpleFuncList\n";
-	    return 0;
-	}
-        funcPtr.reset(new SimpleFunction(index));
-        es.run(funcPtr, index);
+        // int index = 0;
+        // if (argc > 2)
+        //     index = atoi(argv[2]);
+        // if (index >= simpleFuncList.size()) {
+        //     std::cout << "Invalid index in simpleFuncList\n";
+        //     return 0;
+        // }
+        // funcPtr.reset(new SimpleFunction(index));
+        // es.run(funcPtr, index);
     }
     else if (argc > 2 && strcmp(argv[1], "gsl") == 0) {
-	if (!strcmp(argv[2],"all")) {
-	    for (int i = 0; i < GSLFuncList.size(); i++) {
+
+        /* if (!strcmp(argv[2],"all")) {
+            for (int i = 0; i < GSLFuncList.size(); i++) {
                 funcPtr.reset(new GSLFunction(i));
-		es.run(funcPtr, i);
+                es.run(funcPtr, i);
+            }
 	    }
-	}
-	else {
-	    int index = atoi(argv[2]);
-	    if (index >= GSLFuncList.size()) {
-		std::cout << "Invalid index in GSLFuncList.\n";
-		return 0;
-	    }
-            funcPtr.reset(new GSLFunction(index));
-            es.run(funcPtr, index);
-	}
-    }
-    else {
+        else {
+            int index = atoi(argv[2]);
+            if (index >= GSLFuncList.size()) {
+            std::cout << "Invalid index in GSLFuncList.\n";
+            return 0;
+            }
+                funcPtr.reset(new GSLFunction(index));
+                es.run(funcPtr, index);
+        } */
+        nlohmann::json jsonData;
+        
+        {
+            std::ifstream inputFile(argv[2]);
+            if (!inputFile) {
+                std::cerr << "Error opening JSON file: " << argv[2] << std::endl;
+                return EXIT_FAILURE;
+            }
+            inputFile >> jsonData;
+        }
+
+        if (argc == 4) {
+            es.outPath = argv[3];
+        }
+
+        // Extract function indices from JSON data and sort them
+        std::vector<int> functionIndices;
+        for (auto it = jsonData.items().begin(); it != jsonData.items().end(); ++it) {
+            functionIndices.push_back(std::stoi(it.key()));
+        }
+        std::sort(functionIndices.begin(), functionIndices.end());
+
+        // Process each function index
+        for (int i : functionIndices) {
+
+            auto &funcData = jsonData[std::to_string(i)];
+            auto intervalsData = funcData["ranges"];
+
+            EvoSolver::IntervalVec intervals(intervalsData.get<EvoSolver::IntervalVec>());
+            if (intervals.empty()) {
+                continue;
+            }
+
+            funcPtr.reset(new GSLFunction(i));
+            es.run(funcPtr, i, intervals);
+        }
+
+    } else {
         std::cout << "Invalid argument." << std::endl;
-	std::cout << "Valid Example: \n\tbin/gslSolver.out gsl 73\n\tor\n\tbin/gslSolver.out example\n";
+	    std::cout << "Valid Example: \n\tbin/gslSolver.out gsl 73\n\tor\n\tbin/gslSolver.out example\n";
     }
 
     return 0;
