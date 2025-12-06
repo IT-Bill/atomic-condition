@@ -553,59 +553,59 @@ int main(int argc, char *argv[]) {
     }
     else if (argc > 2 && strcmp(argv[1], "gsl") == 0) {
 
-     //    if (!strcmp(argv[2],"all")) {
-     //        for (int i = 0; i < GSLFuncList.size(); i++) {
-     //            funcPtr.reset(new GSLFunction(i));
-     //            es.run(funcPtr, i);
-     //        }
-	    // }
-     //    else {
-     //        int index = atoi(argv[2]);
-     //        if (index >= GSLFuncList.size()) {
-     //          std::cout << "Invalid index in GSLFuncList.\n";
-     //          return 0;
-     //        }
-     //        funcPtr.reset(new GSLFunction(index));
-     //        es.run(funcPtr, index);
-     //    }
+        if (!strcmp(argv[2],"all")) {
+            for (int i = 0; i < GSLFuncList.size(); i++) {
+                funcPtr.reset(new GSLFunction(i));
+                es.run(funcPtr, i);
+            }
+	    }
+        else {
+            int index = atoi(argv[2]);
+            if (index >= GSLFuncList.size()) {
+            std::cout << "Invalid index in GSLFuncList.\n";
+            return 0;
+            }
+                funcPtr.reset(new GSLFunction(index));
+                es.run(funcPtr, index);
+        }
         
         //////////////////////////////////////////////////////////////////////////
-        nlohmann::json jsonData;
+        // nlohmann::json jsonData;
         
-        {
-            std::ifstream inputFile(argv[2]);
-            if (!inputFile) {
-                std::cerr << "Error opening JSON file: " << argv[2] << std::endl;
-                return EXIT_FAILURE;
-            }
-            inputFile >> jsonData;
-        }
+        // {
+        //     std::ifstream inputFile(argv[2]);
+        //     if (!inputFile) {
+        //         std::cerr << "Error opening JSON file: " << argv[2] << std::endl;
+        //         return EXIT_FAILURE;
+        //     }
+        //     inputFile >> jsonData;
+        // }
 
-        if (argc == 4) {
-            es.outPath = argv[3];
-        }
+        // if (argc == 4) {
+        //     es.outPath = argv[3];
+        // }
 
-        // Extract function indices from JSON data and sort them
-        std::vector<int> functionIndices;
-        for (auto it = jsonData.items().begin(); it != jsonData.items().end(); ++it) {
-            functionIndices.push_back(std::stoi(it.key()));
-        }
-        std::sort(functionIndices.begin(), functionIndices.end());
+        // // Extract function indices from JSON data and sort them
+        // std::vector<int> functionIndices;
+        // for (auto it = jsonData.items().begin(); it != jsonData.items().end(); ++it) {
+        //     functionIndices.push_back(std::stoi(it.key()));
+        // }
+        // std::sort(functionIndices.begin(), functionIndices.end());
 
-        // Process each function index
-        for (int i : functionIndices) {
+        // // Process each function index
+        // for (int i : functionIndices) {
 
-            auto &funcData = jsonData[std::to_string(i)];
-            auto intervalsData = funcData["ranges"];
+        //     auto &funcData = jsonData[std::to_string(i)];
+        //     auto intervalsData = funcData["ranges"];
 
-            EvoSolver::IntervalVec intervals(intervalsData.get<EvoSolver::IntervalVec>());
-            if (intervals.empty()) {
-                continue;
-            }
+        //     EvoSolver::IntervalVec intervals(intervalsData.get<EvoSolver::IntervalVec>());
+        //     if (intervals.empty()) {
+        //         continue;
+        //     }
 
-            funcPtr.reset(new GSLFunction(i));
-            es.run(funcPtr, i, intervals);
-        }
+        //     funcPtr.reset(new GSLFunction(i));
+        //     es.run(funcPtr, i, intervals);
+        // }
 
     } else {
         std::cout << "Invalid argument." << std::endl;

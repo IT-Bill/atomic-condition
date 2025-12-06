@@ -149,7 +149,7 @@ const std::vector<std::function<int(double, gsl_sf_result*)>> GSLFuncList = {
     gsl_sf_zeta_e,
     gsl_sf_zetam1_e,
     gsl_sf_eta_e
-};
+}
 
 class FloatingPointFunction {
 public:

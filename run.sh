@@ -1,5 +1,5 @@
 #!/bin/bash
 
-for i in {1..10}; do
-    bin/gslSolver.out gsl /atom/data/e/range_out_e${i}.json tempOutput_e${i}.out
+for i in {0..9}; do
+    bin/gslSolver.out gsl /atom/data/half/range_out_${i}.json tempOutput_${i}.out
 done
