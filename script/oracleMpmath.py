@@ -499,12 +499,12 @@ class GetOracle:
 
 class OutputParser:
     def __init__(self, num=None):
-        self.outputFile=f"tempOutput_{num}.out"
-        import os 
-        os.makedirs("/atom/data/out", exist_ok=True)
-        self.writeToFile=f"/atom/data/half/Output_r{num}.json"
-        # self.outputFile=f"tempOutput.out"
-        # self.writeToFile=f"Output.json"
+        # self.outputFile=f"tempOutput_{num}.out"
+        # import os 
+        # os.makedirs("/atom/data/out", exist_ok=True)
+        # self.writeToFile=f"/atom/data/half/Output_r{num}.json"
+        self.outputFile=f"tempOutput.out"
+        self.writeToFile=f"Output.json"
         with io.open(self.outputFile) as f:
             self.rawData = f.readlines()
         self.data = {}
@@ -602,13 +602,13 @@ class OutputParser:
             f.write(json.dumps(tempData, sort_keys=True, indent=2))
 
 def main():
-    for i in range(0, 5):
-        op = OutputParser(i)
-        op.readAndCalculate()
-        op.writeToJson()
-    # op = OutputParser()
-    # op.readAndCalculate()
-    # op.writeToJson()
+    # for i in range(0, 5):
+    #     op = OutputParser(i)
+    #     op.readAndCalculate()
+    #     op.writeToJson()
+    op = OutputParser()
+    op.readAndCalculate()
+    op.writeToJson()
 
 
 if __name__ == '__main__':

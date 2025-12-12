@@ -598,12 +598,27 @@ int main(int argc, char *argv[]) {
             auto &funcData = jsonData[std::to_string(i)];
             auto intervalsData = funcData["ranges"];
 
+            // Optional: fix the first integer parameter for int-double funcs.
+            int fixedIntParam = 0;
+            bool hasFixedIntParam = false;
+            if (funcData.contains("int_param")) {
+                fixedIntParam = funcData["int_param"].get<int>();
+                hasFixedIntParam = true;
+            } else if (funcData.contains("intArg")) { // fallback field name
+                fixedIntParam = funcData["intArg"].get<int>();
+                hasFixedIntParam = true;
+            }
+
             EvoSolver::IntervalVec intervals(intervalsData.get<EvoSolver::IntervalVec>());
             if (intervals.empty()) {
                 continue;
             }
 
-            funcPtr.reset(new GSLFunction(i));
+            if (hasFixedIntParam) {
+                funcPtr.reset(new GSLIntDoubleParamFunction(i, fixedIntParam));
+            } else {
+                funcPtr.reset(new GSLFunction(i));
+            }
             es.run(funcPtr, i, intervals);
         }
 
